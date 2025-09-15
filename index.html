@@ -147,17 +147,25 @@
 
     // Upload via Apps Script (base64 JSON)
     async function uploadBlob(blob){
-      const arrayBuf = await blob.arrayBuffer();
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuf)));
-      const filename = `${APP.EVENT_SLUG}_${new Date().toISOString().replaceAll(':','-')}_${Math.random().toString(36).slice(2,8)}.jpg`;
-      const res = await fetch(APP.API_BASE, {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ filename, mime:'image/jpeg', data: base64 })
-      });
-      if(!res.ok) throw new Error('Upload failed');
-      return res.json();
-    }
+  const arrayBuf = await blob.arrayBuffer();
+  const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuf)));
+  const payload = JSON.stringify({
+    filename: `${APP.EVENT_SLUG}_${new Date().toISOString().replaceAll(':','-')}_${Math.random().toString(36).slice(2,8)}.jpg`,
+    mime: 'image/jpeg',
+    data: base64
+  });
+
+  const res = await fetch(APP.API_BASE, {
+    method: 'POST',
+    // IMPORTANT: evităm preflight CORS:
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: payload
+  });
+
+  if (!res.ok) throw new Error('Upload failed');
+  return res.json();
+}
+
 
     // Pages
     function renderLanding(){
