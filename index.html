@@ -55,7 +55,7 @@
           <a href="#/test">Ping backend</a>
         </div>
       </section>
-      <p class="footer">Host: GitHub Pages (static). Upload & list: Google Apps Script → Google Drive (gratuit, cu contul tău).</p>
+      <p class="footer">Host: GitHub Pages (static). Stocare: MEGA (MEGAdrop) sau Dropbox File Request – fără backend, fără CORS.</p>
     </div>
   </template>
 
@@ -110,136 +110,69 @@
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 
   <script type="module">
-    // === CONFIG (Google Apps Script Web App) ===
-    // 1) Creează un folder în Google Drive (ex: "Nunta Bianca & Catalin") și copiază FOLDER_ID din URL.
-    // 2) În Apps Script (script.google.com) creează un proiect nou și lipește codul de mai jos (vezi comentariile la finalul acestui fișier).
-    // 3) Deploy → New deployment → Type: Web app → Execute as: Me; Who has access: Anyone → copie URL-ul rezultat în API_BASE.
+    // === CONFIG (Link-only; no CORS) ===
+    // Alege una din variante și lipește URL‑urile reale:
+    // MEGA:  UPLOAD_URL = link MEGAdrop;  GALLERY_URL = link public folder
+    // Dropbox: UPLOAD_URL = link File Request; GALLERY_URL = link folder share (view)
     window.APP = {
-      API_BASE: "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLjiIBXtMeMVhXgakSbEDTBIpN0Uvlnl2OkjQ_N4Q0-3z0kOa8j7BC-BcufUPoFlDbTDbmhObHefBta6NYNLoSVl3qfn3v_FUo99f4xXfULGp6yraXb-hHHgH_SnCDPYwUgJE052BWD9Hb4eabzqIbVOmwobzAmlH7cHqrpXxEkCyKrzFIIBxxLXc0Bjxw1yU1yzn-animudknZVtXADwvWg8AX_GKeuMGHJBfhrNNfcWxobwv_ZPH8vwGn1AICP1Y2fTh1HxeiL56woP3tist1zgHVrzQ&lib=MvL5gaQniJftOwa8PBApxe9AONQ2lCa5B", // ex: https://script.google.com/macros/s/AKfycbx.../exec
+      UPLOAD_URL: "https://www.dropbox.com/request/qIhg3HMcFhIlmwZREn6Z",
+      GALLERY_URL: "https://www.dropbox.com/scl/fo/wh397e8ebaf73wvw0rwmc/AKF5h__XMuJiC73ZBsCOt-8?rlkey=wic94iz7whpx8rjrp0y6n22ir&st=tabc5104&dl=0",
       EVENT_SLUG: "bianca-catalin-2025"
     };
 
     const $ = s=>document.querySelector(s);
     const appRoot = $('#app');
-    // helper: adaugă parametri indiferent dacă API_BASE conține deja '?'
-    const addParams = (base, q) => base + (base.includes('?') ? '&' : '?') + q;
-    const routes = { '#/': renderLanding, '#/galerie': renderGallery, '#/test': renderTest };
-    function navigate(){ (routes[location.hash||'#/']||renderLanding)(); }
-    addEventListener('hashchange', navigate);
+    const routes = { '#/': renderLanding, '#/galerie': renderGallery };
+    addEventListener('hashchange', ()=>{ (routes[location.hash||'#/']||renderLanding)(); });
 
-    // Camera
-    let currentStream=null, usingFront=false, capturedBlob=null;
-    const cameraModal = $('#cameraModal');
-    const video = $('#video');
-    const canvas = $('#canvas');
-    const preview = $('#preview');
-
-    async function startCamera(){
-      stopCamera();
-      try{
-        currentStream = await navigator.mediaDevices.getUserMedia({video:{facingMode: usingFront?'user':'environment'}, audio:false});
-        video.srcObject = currentStream;
-      }catch(e){ alert('Nu pot accesa camera. Poți încărca din galerie.'); }
-    }
-    function stopCamera(){ if(currentStream){ currentStream.getTracks().forEach(t=>t.stop()); currentStream=null; } }
-    function captureFrame(){
-      const w = video.videoWidth||1080, h = video.videoHeight||1440; canvas.width=w; canvas.height=h;
-      const ctx = canvas.getContext('2d'); ctx.drawImage(video,0,0,w,h);
-      canvas.toBlob(b=>{ capturedBlob=b; preview.src=URL.createObjectURL(b); $('#btnUpload').disabled=!capturedBlob; }, 'image/jpeg', 0.92);
-    }
-
-    // Upload via Apps Script (base64 JSON)
-    async function uploadBlob(blob){
-      const arrayBuf = await blob.arrayBuffer();
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuf)));
-      const filename = `${APP.EVENT_SLUG}_${new Date().toISOString().replaceAll(':','-')}_${Math.random().toString(36).slice(2,8)}.jpg`;
-      const res = await fetch(APP.API_BASE, {
-        method:'POST',
-        headers:{'Content-Type':'text/plain;charset=utf-8'},
-        body: JSON.stringify({ filename, mime:'image/jpeg', data: base64 })
-      });
-      if(!res.ok){ const txt = await res.text().catch(()=> ''); throw new Error('HTTP '+res.status+' '+txt); }
-      return res.json();
-    }
-
-    // Pages
     function renderLanding(){
       appRoot.innerHTML = document.querySelector('#landing-tpl').innerHTML;
-      document.getElementById('openCamera').addEventListener('click', ()=>{ cameraModal.showModal(); startCamera(); });
+      const btn = document.getElementById('openCamera');
+      btn.textContent = '📤 Deschide pagina de upload';
+      btn.onclick = ()=>{ if(!APP.UPLOAD_URL.includes('http')) alert('Completează UPLOAD_URL în config!'); else window.open(APP.UPLOAD_URL,'_blank'); };
     }
 
-    async function renderTest(){
-      appRoot.innerHTML = `<div class="container"><section class="card hero"><h2 class="title" style="font-size:clamp(22px,4.5vw,30px);margin:0">Test backend</h2><p class="subtitle">Verificăm conexiunea cu Google Apps Script</p><div class="nav" style="margin-top:14px"><a href="#/">⬅️ Înapoi</a></div><div id="testOut" style="margin-top:14px;color:#cbd5e1;white-space:pre-wrap"></div><div class="row" style="margin-top:14px;justify-content:center"><button id="btnPing" class="btn primary">🔎 Ping & List</button><button id="btnPost" class="btn">⬆️ Test POST</button></div></section></div>`;
-      const outEl = document.getElementById('testOut');
-      const print = (msg)=> outEl.textContent = msg;
-      document.getElementById('btnPing').onclick = async ()=>{
-        print('Se apelează ?action=list …');
-        try{ const r = await fetch(addParams(APP.API_BASE, 'action=list')); const t = await r.text(); print('HTTP '+r.status+'
-'+t); }
-        catch(e){ print('Eroare: '+e); }
-      };
-      document.getElementById('btnPost').onclick = async ()=>{
-        print('Se face POST de test …');
-        try{ const payload = JSON.stringify({ filename:'test_'+Date.now()+'.txt', mime:'text/plain', data: btoa('hello') }); const r = await fetch(APP.API_BASE, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: payload }); const t = await r.text(); print('HTTP '+r.status+'
-'+t); }
-        catch(e){ print('Eroare: '+e); }
-      };
+    function renderGallery(){
+      appRoot.innerHTML = document.querySelector('#gallery-tpl').innerHTML;
+      const grid = document.getElementById('grid');
+      const wrap = document.createElement('div');
+      wrap.className = 'card hero';
+      wrap.style.margin = '10px 0 20px';
+      wrap.innerHTML = `
+        <p class="subtitle">Galeria se deschide în platforma de stocare (MEGA/Dropbox). Acolo ai și opțiunea "Download as ZIP".</p>
+        <div class="row" style="justify-content:center">
+          <a class="btn primary" target="_blank" href="${APP.GALLERY_URL}">🔍 Deschide galeria</a>
+          <a class="btn" target="_blank" href="${APP.GALLERY_URL}">⬇️ Descarcă tot (din UI)</a>
+          <a class="btn" href="#/">⬅️ Înapoi</a>
+        </div>`;
+      grid.replaceWith(wrap);
+      document.getElementById('photoCount').textContent = 'Galerie externă';
     }
 
-    async function renderGallery(){
-      appRoot.innerHTML = $('#gallery-tpl').innerHTML;
-      const grid = $('#grid');
-      async function load(){
-        grid.innerHTML = '<p class="subtitle">Se încarcă fotografiile…</p>';
-        const res = await fetch(addParams(APP.API_BASE, 'action=list'));
-        const items = await res.json(); // [{id,name,url,viewUrl,ts}]
-        items.sort((a,b)=> (b.ts||0)-(a.ts||0));
-        $('#photoCount').textContent = `${items.length} fotografii`;
-        grid.innerHTML = '';
-        for(const [idx,it] of items.entries()){
-          const div=document.createElement('div');
-          div.className='thumb';
-          div.innerHTML = `
-            <img loading="lazy" src="${it.url}" alt="foto ${idx+1}">
-            <div class="actions">
-              <a class="btn" download href="${it.url}">⬇️ Descarcă</a>
-              <a class="btn" target="_blank" href="${it.viewUrl||it.url}">🔍 Deschide</a>
-            </div>`;
-          grid.appendChild(div);
-        }
-      }
-      await load();
-      $('#btnRefresh').addEventListener('click', load);
-      $('#btnDownloadAll').addEventListener('click', downloadAllZip);
-    }
-
-    async function downloadAllZip(){
-      const res = await fetch(addParams(APP.API_BASE, 'action=list'));
-      const items = await res.json();
-      const zip = new JSZip();
-      let i=1;
-      for(const it of items){
-        const blob = await fetch(it.url).then(r=>r.blob());
-        zip.file(it.name || `photo_${i}.jpg`, blob); i++;
-      }
-      const content = await zip.generateAsync({type:'blob'});
-      const a=document.createElement('a'); a.href=URL.createObjectURL(content); a.download=`${APP.EVENT_SLUG}_all_photos.zip`; a.click(); URL.revokeObjectURL(a.href);
-    }
-
-    // Modal events
-    $('#closeModal').addEventListener('click', ()=>{ cameraModal.close(); stopCamera(); });
-    $('#btnFlip').addEventListener('click', ()=>{ usingFront=!usingFront; startCamera(); });
-    $('#btnCapture').addEventListener('click', captureFrame);
-    $('#fileInput').addEventListener('change', (e)=>{ const f=e.target.files?.[0]; if(!f) return; capturedBlob=f; preview.src=URL.createObjectURL(f); $('#btnUpload').disabled=false; });
-    $('#btnUpload').addEventListener('click', async ()=>{
-      if(!capturedBlob) return;
-      $('#btnUpload').disabled=true;
-      try{ await uploadBlob(capturedBlob); alert('Fotografia a fost încărcată!'); cameraModal.close(); stopCamera(); capturedBlob=null; preview.removeAttribute('src'); location.hash='#/galerie'; }
-      catch(e){ alert('Încărcarea a eșuat. Verifică Apps Script URL & permisiunile.'); $('#btnUpload').disabled=false; }
-    });
-
-    navigate();
+    // first render
+    (routes[location.hash||'#/']||renderLanding)();
   </script>
+
+  <!-- ================= SUPABASE STORAGE – POLITICI RLS =================
+  1) Storage → Create bucket `photos` și bifează `Public`.
+  2) SQL → rulează:
+
+  -- permite citire publică din bucketul `photos`
+  create policy if not exists "public read photos" on storage.objects
+    for select to public using (bucket_id = 'photos');
+
+  -- permite încărcare publică doar în subfolderul evenimentului (înlocuiește slugul)
+  create policy if not exists "public upload event folder" on storage.objects
+    for insert to public with check (
+      bucket_id = 'photos' and name like 'bianca-catalin-2025/%'
+    );
+
+  -- (opțional) permite ștergere numai pentru rolul service (nu pentru public)
+  -- delete/update NU sunt permise public implicit; le lași dezactivate.
+
+  3) Project Settings → API → ia `Project URL` și `anon public` key, pune-le în `APP`.
+  4) Test: Ping backend → List, apoi Test upload.
+  ======================================================================= -->
 
   <!-- ================= GOOGLE APPS SCRIPT (backend gratuit) =================
   1) Creează un folder în Google Drive și ia FOLDER_ID (din URL).
