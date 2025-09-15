@@ -115,13 +115,14 @@
     // 2) În Apps Script (script.google.com) creează un proiect nou și lipește codul de mai jos (vezi comentariile la finalul acestui fișier).
     // 3) Deploy → New deployment → Type: Web app → Execute as: Me; Who has access: Anyone → copie URL-ul rezultat în API_BASE.
     window.APP = {
-      AAPI_BASE: "https://script.googleusercontent.com/macros/echo?user_content_key=...&lib=MvL5gaQniJftOwa8PBApxe9AONQ2lCa5B",
-
+      API_BASE: "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLjiIBXtMeMVhXgakSbEDTBIpN0Uvlnl2OkjQ_N4Q0-3z0kOa8j7BC-BcufUPoFlDbTDbmhObHefBta6NYNLoSVl3qfn3v_FUo99f4xXfULGp6yraXb-hHHgH_SnCDPYwUgJE052BWD9Hb4eabzqIbVOmwobzAmlH7cHqrpXxEkCyKrzFIIBxxLXc0Bjxw1yU1yzn-animudknZVtXADwvWg8AX_GKeuMGHJBfhrNNfcWxobwv_ZPH8vwGn1AICP1Y2fTh1HxeiL56woP3tist1zgHVrzQ&lib=MvL5gaQniJftOwa8PBApxe9AONQ2lCa5B", // ex: https://script.google.com/macros/s/AKfycbx.../exec
       EVENT_SLUG: "bianca-catalin-2025"
     };
 
     const $ = s=>document.querySelector(s);
     const appRoot = $('#app');
+    // helper: adaugă parametri indiferent dacă API_BASE conține deja '?'
+    const addParams = (base, q) => base + (base.includes('?') ? '&' : '?') + q;
     const routes = { '#/': renderLanding, '#/galerie': renderGallery, '#/test': renderTest };
     function navigate(){ (routes[location.hash||'#/']||renderLanding)(); }
     addEventListener('hashchange', navigate);
@@ -154,15 +155,18 @@
       const filename = `${APP.EVENT_SLUG}_${new Date().toISOString().replaceAll(':','-')}_${Math.random().toString(36).slice(2,8)}.jpg`;
       const res = await fetch(APP.API_BASE, {
         method:'POST',
-        headers:{'Content-Type':'application/json'},
+        headers:{'Content-Type':'text/plain;charset=utf-8'},
         body: JSON.stringify({ filename, mime:'image/jpeg', data: base64 })
       });
-      if(!res.ok) throw new Error('Upload failed');
+      if(!res.ok){ const txt = await res.text().catch(()=> ''); throw new Error('HTTP '+res.status+' '+txt); }
       return res.json();
     }
 
     // Pages
-    function renderLanding(){$1}
+    function renderLanding(){
+      appRoot.innerHTML = document.querySelector('#landing-tpl').innerHTML;
+      document.getElementById('openCamera').addEventListener('click', ()=>{ cameraModal.showModal(); startCamera(); });
+    }
 
     async function renderTest(){
       appRoot.innerHTML = `<div class="container"><section class="card hero"><h2 class="title" style="font-size:clamp(22px,4.5vw,30px);margin:0">Test backend</h2><p class="subtitle">Verificăm conexiunea cu Google Apps Script</p><div class="nav" style="margin-top:14px"><a href="#/">⬅️ Înapoi</a></div><div id="testOut" style="margin-top:14px;color:#cbd5e1;white-space:pre-wrap"></div><div class="row" style="margin-top:14px;justify-content:center"><button id="btnPing" class="btn primary">🔎 Ping & List</button><button id="btnPost" class="btn">⬆️ Test POST</button></div></section></div>`;
@@ -170,7 +174,7 @@
       const print = (msg)=> outEl.textContent = msg;
       document.getElementById('btnPing').onclick = async ()=>{
         print('Se apelează ?action=list …');
-        try{ const r = await fetch(APP.API_BASE + '?action=list'); const t = await r.text(); print('HTTP '+r.status+'
+        try{ const r = await fetch(addParams(APP.API_BASE, 'action=list')); const t = await r.text(); print('HTTP '+r.status+'
 '+t); }
         catch(e){ print('Eroare: '+e); }
       };
@@ -187,7 +191,7 @@
       const grid = $('#grid');
       async function load(){
         grid.innerHTML = '<p class="subtitle">Se încarcă fotografiile…</p>';
-        const res = await fetch(APP.API_BASE + '?action=list');
+        const res = await fetch(addParams(APP.API_BASE, 'action=list'));
         const items = await res.json(); // [{id,name,url,viewUrl,ts}]
         items.sort((a,b)=> (b.ts||0)-(a.ts||0));
         $('#photoCount').textContent = `${items.length} fotografii`;
@@ -210,7 +214,7 @@
     }
 
     async function downloadAllZip(){
-      const res = await fetch(APP.API_BASE + '?action=list');
+      const res = await fetch(addParams(APP.API_BASE, 'action=list'));
       const items = await res.json();
       const zip = new JSZip();
       let i=1;
