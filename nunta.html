@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bianca & Cătălin – Photo Booth (Drive)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root{ --bg:#0f0f12; --card:#17171c; --muted:#a0a3ad; --acc:#ff3b7f; --acc2:#7c3aed; --rad:18px; }
+    *{box-sizing:border-box}
+    html,body{margin:0;height:100%;font-family:Poppins,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(180deg,#0e0e12,#14141a);}    
+    a{color:inherit}
+    .container{max-width:960px;margin:0 auto;padding:20px}
+    .card{background:linear-gradient(145deg,#17171c,#121218);border:1px solid #23232b;border-radius:var(--rad);box-shadow:0 10px 30px rgba(0,0,0,.35);}
+    .hero{padding:36px 20px;text-align:center;color:#fff}
+    .title{font-size:clamp(28px,6vw,40px);font-weight:800;letter-spacing:.3px;margin:0 0 6px}
+    .subtitle{font-size:clamp(16px,3.5vw,18px);color:var(--muted);margin:0}
+    .bigbtn{display:inline-flex;align-items:center;gap:10px;padding:16px 22px;margin-top:22px;border-radius:999px;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;font-weight:700;border:none;cursor:pointer;box-shadow:0 12px 24px rgba(255,59,127,.25);} .bigbtn:active{transform:translateY(1px)}
+    .nav{display:flex;gap:10px;justify-content:center;margin-top:14px}
+    .nav a{display:inline-flex;padding:10px 14px;border-radius:999px;background:#1b1b22;color:#eaeaf2;border:1px solid #282832;text-decoration:none}
+    .footer{color:#7e8294;text-align:center;font-size:12px;margin:24px 0}
+    dialog{border:none;border-radius:24px;background:#0f0f14;color:#fff;max-width:820px;width:95vw;padding:0;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.45)}
+    .modal-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#13131a;border-bottom:1px solid #252534}
+    .modal-title{font-weight:700}
+    .close{all:unset;cursor:pointer;padding:6px 10px;border-radius:8px;background:#1c1c25}
+    .modal-body{display:grid;grid-template-columns:1fr;gap:16px;padding:16px}
+    @media(min-width:800px){.modal-body{grid-template-columns:2fr 1fr}}
+    #video,#preview{width:100%;border-radius:16px;background:#0b0b10;border:1px solid #232333;aspect-ratio:3/4;object-fit:cover}
+    .controls{display:flex;flex-direction:column;gap:10px}
+    .btn{padding:12px 14px;border-radius:12px;border:1px solid #2a2a38;background:#1a1a24;color:#fff;font-weight:600;cursor:pointer}
+    .btn.primary{background:linear-gradient(135deg,var(--acc),var(--acc2));border:none}
+    .btn[disabled]{opacity:.5;cursor:not-allowed}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+    @media(min-width:640px){.grid{grid-template-columns:repeat(3,1fr)}}
+    @media(min-width:920px){.grid{grid-template-columns:repeat(4,1fr)}}
+    .thumb{position:relative;border-radius:14px;overflow:hidden;border:1px solid #272737;background:#0b0b10}
+    .thumb img{width:100%;height:220px;object-fit:cover;display:block}
+    .thumb .actions{position:absolute;inset:auto 8px 8px 8px;display:flex;gap:8px}
+    .chip{background:rgba(15,15,20,.75);backdrop-filter:blur(6px);border:1px solid #2a2a38;color:#e6e7ef;padding:8px 10px;border-radius:10px;font-size:12px}
+  </style>
+</head>
+<body>
+  <main id="app"></main>
+  <template id="landing-tpl">
+    <div class="container">
+      <section class="card hero">
+        <h1 class="title">Bianca & Cătălin</h1>
+        <p class="subtitle">Bine ați venit la nunta noastră – distracție plăcută și sperăm să aveți amintiri frumoase! 📸✨</p>
+        <button id="openCamera" class="bigbtn">📷 Fă o poză și încarc‑o</button>
+        <div class="nav">
+          <a href="#/galerie">Vezi toate pozele</a>
+        </div>
+      </section>
+      <p class="footer">Host: GitHub Pages (static). Upload & list: Google Apps Script → Google Drive (gratuit, cu contul tău).</p>
+    </div>
+  </template>
+
+  <template id="gallery-tpl">
+    <div class="container">
+      <section class="card hero" style="padding:18px 18px 6px">
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between">
+          <div>
+            <h2 class="title" style="font-size:clamp(22px,4.5vw,30px);margin:0">Galerie – Bianca & Cătălin</h2>
+            <p class="subtitle" style="margin-top:4px">Toate fotografiile încărcate de invitați</p>
+          </div>
+          <div class="row">
+            <button id="btnRefresh" class="btn">🔄 Reîncarcă</button>
+            <button id="btnDownloadAll" class="btn primary">⬇️ Descarcă tot</button>
+            <a class="btn" href="#/">⬅️ Înapoi</a>
+          </div>
+        </div>
+        <div style="margin:14px 0 20px" class="row">
+          <span class="chip" id="photoCount">—</span>
+          <span class="chip">Public (link share)</span>
+        </div>
+      </section>
+      <section class="container" style="padding:14px 0 28px">
+        <div id="grid" class="grid"></div>
+      </section>
+    </div>
+  </template>
+
+  <dialog id="cameraModal">
+    <div class="modal-header">
+      <div class="modal-title">Fă o poză</div>
+      <button class="close" id="closeModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <div>
+        <video id="video" autoplay playsinline></video>
+        <canvas id="canvas" style="display:none"></canvas>
+      </div>
+      <div class="controls">
+        <img id="preview" alt="previzualizare" />
+        <div class="row">
+          <button class="btn" id="btnFlip">🔁 Schimbă camera</button>
+          <label class="btn" for="fileInput">📁 Alege din galerie</label>
+          <input id="fileInput" type="file" accept="image/*" capture="environment" hidden>
+        </div>
+        <button class="btn" id="btnCapture">📸 Fă fotografia</button>
+        <button class="btn primary" id="btnUpload" disabled>⬆️ Încarcă fotografia</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+  <script type="module">
+    // === CONFIG (Google Apps Script Web App) ===
+    // 1) Creează un folder în Google Drive (ex: "Nunta Bianca & Catalin") și copiază FOLDER_ID din URL.
+    // 2) În Apps Script (script.google.com) creează un proiect nou și lipește codul de mai jos (vezi comentariile la finalul acestui fișier).
+    // 3) Deploy → New deployment → Type: Web app → Execute as: Me; Who has access: Anyone → copie URL-ul rezultat în API_BASE.
+    window.APP = {
+      API_BASE: "https://script.google.com/macros/s/AKfycbwjQbPeiLM3mzFcVqofvQ2QxIeOul0BBWc5MWENwTKsY-d3F_5uKjGzZsyJ-G7zVgnr/exec", // ex: https://script.google.com/macros/s/AKfycbx.../exec
+      EVENT_SLUG: "bianca-catalin-2025"
+    };
+
+    const $ = s=>document.querySelector(s);
+    const appRoot = $('#app');
+    const routes = { '#/': renderLanding, '#/galerie': renderGallery };
+    function navigate(){ (routes[location.hash||'#/']||renderLanding)(); }
+    addEventListener('hashchange', navigate);
+
+    // Camera
+    let currentStream=null, usingFront=false, capturedBlob=null;
+    const cameraModal = $('#cameraModal');
+    const video = $('#video');
+    const canvas = $('#canvas');
+    const preview = $('#preview');
+
+    async function startCamera(){
+      stopCamera();
+      try{
+        currentStream = await navigator.mediaDevices.getUserMedia({video:{facingMode: usingFront?'user':'environment'}, audio:false});
+        video.srcObject = currentStream;
+      }catch(e){ alert('Nu pot accesa camera. Poți încărca din galerie.'); }
+    }
+    function stopCamera(){ if(currentStream){ currentStream.getTracks().forEach(t=>t.stop()); currentStream=null; } }
+    function captureFrame(){
+      const w = video.videoWidth||1080, h = video.videoHeight||1440; canvas.width=w; canvas.height=h;
+      const ctx = canvas.getContext('2d'); ctx.drawImage(video,0,0,w,h);
+      canvas.toBlob(b=>{ capturedBlob=b; preview.src=URL.createObjectURL(b); $('#btnUpload').disabled=!capturedBlob; }, 'image/jpeg', 0.92);
+    }
+
+    // Upload via Apps Script (base64 JSON)
+    async function uploadBlob(blob){
+      const arrayBuf = await blob.arrayBuffer();
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuf)));
+      const filename = `${APP.EVENT_SLUG}_${new Date().toISOString().replaceAll(':','-')}_${Math.random().toString(36).slice(2,8)}.jpg`;
+      const res = await fetch(APP.API_BASE, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ filename, mime:'image/jpeg', data: base64 })
+      });
+      if(!res.ok) throw new Error('Upload failed');
+      return res.json();
+    }
+
+    // Pages
+    function renderLanding(){
+      appRoot.innerHTML = $('#landing-tpl').innerHTML;
+      $('#openCamera').addEventListener('click', ()=>{ cameraModal.showModal(); startCamera(); });
+    }
+
+    async function renderGallery(){
+      appRoot.innerHTML = $('#gallery-tpl').innerHTML;
+      const grid = $('#grid');
+      async function load(){
+        grid.innerHTML = '<p class="subtitle">Se încarcă fotografiile…</p>';
+        const res = await fetch(APP.API_BASE + '?action=list');
+        const items = await res.json(); // [{id,name,url,viewUrl,ts}]
+        items.sort((a,b)=> (b.ts||0)-(a.ts||0));
+        $('#photoCount').textContent = `${items.length} fotografii`;
+        grid.innerHTML = '';
+        for(const [idx,it] of items.entries()){
+          const div=document.createElement('div');
+          div.className='thumb';
+          div.innerHTML = `
+            <img loading="lazy" src="${it.url}" alt="foto ${idx+1}">
+            <div class="actions">
+              <a class="btn" download href="${it.url}">⬇️ Descarcă</a>
+              <a class="btn" target="_blank" href="${it.viewUrl||it.url}">🔍 Deschide</a>
+            </div>`;
+          grid.appendChild(div);
+        }
+      }
+      await load();
+      $('#btnRefresh').addEventListener('click', load);
+      $('#btnDownloadAll').addEventListener('click', downloadAllZip);
+    }
+
+    async function downloadAllZip(){
+      const res = await fetch(APP.API_BASE + '?action=list');
+      const items = await res.json();
+      const zip = new JSZip();
+      let i=1;
+      for(const it of items){
+        const blob = await fetch(it.url).then(r=>r.blob());
+        zip.file(it.name || `photo_${i}.jpg`, blob); i++;
+      }
+      const content = await zip.generateAsync({type:'blob'});
+      const a=document.createElement('a'); a.href=URL.createObjectURL(content); a.download=`${APP.EVENT_SLUG}_all_photos.zip`; a.click(); URL.revokeObjectURL(a.href);
+    }
+
+    // Modal events
+    $('#closeModal').addEventListener('click', ()=>{ cameraModal.close(); stopCamera(); });
+    $('#btnFlip').addEventListener('click', ()=>{ usingFront=!usingFront; startCamera(); });
+    $('#btnCapture').addEventListener('click', captureFrame);
+    $('#fileInput').addEventListener('change', (e)=>{ const f=e.target.files?.[0]; if(!f) return; capturedBlob=f; preview.src=URL.createObjectURL(f); $('#btnUpload').disabled=false; });
+    $('#btnUpload').addEventListener('click', async ()=>{
+      if(!capturedBlob) return;
+      $('#btnUpload').disabled=true;
+      try{ await uploadBlob(capturedBlob); alert('Fotografia a fost încărcată!'); cameraModal.close(); stopCamera(); capturedBlob=null; preview.removeAttribute('src'); location.hash='#/galerie'; }
+      catch(e){ alert('Încărcarea a eșuat. Verifică Apps Script URL & permisiunile.'); $('#btnUpload').disabled=false; }
+    });
+
+    navigate();
+  </script>
+
+  <!-- ================= GOOGLE APPS SCRIPT (backend gratuit) =================
+  1) Creează un folder în Google Drive și ia FOLDER_ID (din URL).
+  2) script.google.com → New project → Code.gs, lipește codul de mai jos, înlocuiește FOLDER_ID.
+  3) Deploy → New deployment → Type: Web app → Execute as: Me → Who has access: Anyone → Deploy → copie URL (API_BASE).
+
+  // ===== Code.gs =====
+  const FOLDER_ID = 'PASTE_YOUR_FOLDER_ID';
+
+  function doPost(e){
+    try{
+      const body = JSON.parse(e.postData.contents || '{}');
+      const bytes = Utilities.base64Decode(body.data);
+      const blob = Utilities.newBlob(bytes, body.mime || 'image/jpeg', body.filename || ('photo_'+Date.now()+'.jpg'));
+      const folder = DriveApp.getFolderById(FOLDER_ID);
+      const file = folder.createFile(blob);
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      const out = { id:file.getId(), name:file.getName(), url:`https://drive.google.com/uc?id=${file.getId()}&export=download`, viewUrl:`https://drive.google.com/uc?id=${file.getId()}`, ts: new Date(file.getDateCreated()).getTime() };
+      return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
+    }catch(err){
+      return ContentService.createTextOutput(JSON.stringify({error:String(err)})).setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
+  function doGet(e){
+    const action = (e.parameter.action||'list').toString();
+    if(action==='list'){
+      const folder = DriveApp.getFolderById(FOLDER_ID);
+      const files = folder.getFiles();
+      const out = [];
+      while(files.hasNext()){
+        const f = files.next();
+        out.push({ id:f.getId(), name:f.getName(), url:`https://drive.google.com/uc?id=${f.getId()}&export=download`, viewUrl:`https://drive.google.com/uc?id=${f.getId()}`, ts: new Date(f.getDateCreated()).getTime() });
+      }
+      // răspuns JSON
+      return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
+    }
+    // fallback text
+    return ContentService.createTextOutput('OK');
+  }
+
+  // Notă CORS: Web App-urile Apps Script funcționează cu fetch cross-origin. Dacă întâmpini blocaj CORS, redeploy (New deployment) și asigură-te că accesul e "Anyone".
+
+  ============================================================================ -->
+</body>
+</html>
